@@ -3,8 +3,6 @@ package com.SENAC.SENAC.model;
 import java.sql.Date;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -17,12 +15,11 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name="Alunos")
+@Table(name="tb_alunos")
 @Entity
 public class AlunoModel {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int codigo;
+    private String tagRfid;
     private String nome;
     private int presenca;
     private Date diasDaSemana;

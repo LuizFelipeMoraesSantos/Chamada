@@ -1,0 +1,1 @@
+INSERT INTO tb_alunos (tag_rfid, nome, curso) VALUES ('ABC12345', 'Luiz Felipe', 'ADS');
