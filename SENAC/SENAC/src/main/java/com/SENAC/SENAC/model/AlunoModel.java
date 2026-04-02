@@ -1,7 +1,5 @@
 package com.SENAC.SENAC.model;
 
-import java.sql.Date;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -17,13 +15,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @Table(name="tb_alunos")
 @Entity
-public class AlunoModel {
+public class alunoModel extends presencaModel {
+    
     @Id
     private String tagRfid;
     private String nome;
-    private int presenca;
-    private Date diasDaSemana;
-    private Date mes;
-    private int diasLetivos;
 
 }

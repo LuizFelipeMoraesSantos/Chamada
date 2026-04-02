@@ -1,11 +1,9 @@
 package com.SENAC.SENAC.service;
 
 import java.util.Optional;
-
-// Importação correta para o JpaRepository
 import org.springframework.stereotype.Service;
-import com.SENAC.SENAC.model.AlunoModel;
-import com.SENAC.SENAC.repository.AlunoRepository;
+import com.SENAC.SENAC.model.alunoModel;
+import com.SENAC.SENAC.repository.alunoRepository;
 import jakarta.annotation.PostConstruct;
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
@@ -15,16 +13,21 @@ import jssc.SerialPortList;
 @Service
 public class leituraDeTags {
 
-    private final AlunoRepository bancoH2;
+    private final alunoRepository bancoRepository; // Nome genérico pois você vai usar MySQL
     private SerialPort portaUsb; 
+    private String tagTemporaria; // Corrigido o nome da variável
 
-    public leituraDeTags(AlunoRepository bancoH2) {
-        this.bancoH2 = bancoH2;
+    public leituraDeTags(alunoRepository bancoRepository) {
+        this.bancoRepository = bancoRepository;
+    }
+
+    // Método para o Controller buscar a última tag para o formulário de cadastro
+    public String getTagTemporaria() {
+        return this.tagTemporaria;
     }
 
     @PostConstruct
     public void init() {
-        // 1. Lista as portas COM disponíveis no Windows
         String[] portasDisponiveis = SerialPortList.getPortNames();
 
         if (portasDisponiveis.length == 0) {
@@ -32,16 +35,11 @@ public class leituraDeTags {
             return;
         }
 
-        // 2. Seleciona a primeira porta (ex: COM3)
         String portaSelecionada = portasDisponiveis[0];
         this.portaUsb = new SerialPort(portaSelecionada); 
 
-        System.out.println("--- Tentando conectar na porta: " + portaSelecionada + " ---");
-
         try {
             this.portaUsb.openPort(); 
-            
-            // 3. Configura os parâmetros (Baudrate 9600 deve bater com o Serial.begin do Arduino)
             this.portaUsb.setParams(
                 SerialPort.BAUDRATE_9600, 
                 SerialPort.DATABITS_8, 
@@ -49,17 +47,22 @@ public class leituraDeTags {
                 SerialPort.PARITY_NONE
             );
 
-            // 4. Ativa o "Ouvinte" de eventos serial
             this.portaUsb.addEventListener(new SerialPortEventListener() {
                 @Override
                 public void serialEvent(SerialPortEvent event) {
                     if (event.isRXCHAR() && event.getEventValue() > 0) { 
                         try {
-                            // TODO: tag de leitura
-                            String tagLida = portaUsb.readString().trim();
+                            // Pequena pausa para garantir que o buffer da USB receba a tag completa
+                            Thread.sleep(50); 
+                            
+                            // Lógica de limpeza: Remove espaços extras e espaços entre os IDs
+                            String tagLida = portaUsb.readString().trim().replace(" ", " ");
                             
                             if (tagLida != null && !tagLida.isEmpty()) {
-                                // O processamento é feito fora do escopo da porta para não travar a leitura
+                                // Guarda a tag para o fluxo de CADASTRAR
+                                tagTemporaria = tagLida; 
+                                
+                                // Processa para o fluxo de PRESENÇA
                                 processarTag(tagLida);
                             }
                         } catch (Exception e) {
@@ -69,7 +72,7 @@ public class leituraDeTags {
                 }
             });
 
-            System.out.println("--- Conexão estabelecida com sucesso! Aguardando tags... ---");
+            System.out.println("--- Conectado em: " + portaSelecionada + ". Aguardando tags... ---");
 
         } catch (Exception e) {
             System.err.println("Erro ao abrir a porta " + portaSelecionada + ": " + e.getMessage());
@@ -77,15 +80,15 @@ public class leituraDeTags {
     }
 
     private void processarTag(String tag) {
-        // 5. Busca no H2 usando a tag como ID (Chave Primária)
-        Optional<AlunoModel> alunoOpt = bancoH2.findById(tag);
+        // Busca no banco (agora MySQL) usando a tag limpa
+        Optional<alunoModel> alunoOpt = bancoRepository.findById(tag);
 
         if (alunoOpt.isPresent()) {
-            AlunoModel aluno = alunoOpt.get();
+            alunoModel aluno = alunoOpt.get();
             
-            // Lógica de Presença: Aumenta o contador e salva no banco
+            // Incrementa presença
             aluno.setPresenca(aluno.getPresenca() + 1);
-            bancoH2.save(aluno);
+            bancoRepository.save(aluno);
 
             System.out.println("\n==============================");
             System.out.println("   CHAMADA REGISTRADA!");
@@ -93,8 +96,8 @@ public class leituraDeTags {
             System.out.println("   Total de Presenças: " + aluno.getPresenca());
             System.out.println("==============================\n");
         } else {
-            System.out.println("\n[AVISO] Tag detectada: " + tag);
-            System.out.println("[AVISO] Esta tag não está vinculada a nenhum aluno no banco H2.\n");
+            System.out.println("\n[AVISO] Nova tag detectada: " + tag);
+            System.out.println("[AVISO] Pronta para ser vinculada a um novo aluno.\n");
         }
     }
 }
